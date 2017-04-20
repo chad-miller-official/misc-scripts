@@ -1,10 +1,12 @@
 #!/usr/bin/perl
 
+use strict;
+use warnings;
 use utf8;
 
 binmode( STDOUT, ':utf8' );
 
-%repl_map = (
+my %repl_map = (
     'a' => ( 'æ', 'ä', 'å' ),
     'e' => 'ë',
     'i' => 'ï',
@@ -18,11 +20,11 @@ binmode( STDOUT, ':utf8' );
     'U' => 'Ÿ',
 );
 
-$str = $ARGV[0] or die "Usage: $0 <string>\n";
+my $str = $ARGV[0] or die "Usage: $0 <string>\n";
 
-while( ( $letter, $repl ) = each %repl_map )
+while( my ( $letter, $repl ) = each %repl_map )
 {
-    $repl = $repl[int rand scalar @$repl] if ref $repl eq 'ARRAY';
+    $repl = ${@$repl}[int rand scalar @$repl] if ref $repl eq 'ARRAY';
     $str  =~ s/$letter/$repl/g;
 }
 
