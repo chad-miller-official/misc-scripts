@@ -38,18 +38,8 @@ def usage():
     print( 'Usage: {} <input file>'.format( sys.argv[0] ) )
     sys.exit( 0 )
 
-def main( argv ):
-    """Script main.
-
-    Keyword arguments:
-    argv -- an array containing this script arguments. Should
-            contain only a filename at index 0.
-    """
-    if len( argv ) != 1:
-        usage()
-
-    filename = argv[0]
-
+def run( filename ):
+    """Function that implements the actual body of this script."""
     pos_handle = open( filename, 'r' )
     neg_handle = open( filename, 'r' )
 
@@ -62,29 +52,39 @@ def main( argv ):
     # it to avoid underflowing.
     while next_pos is not None or next_neg is not None:
         if total >= 0:
-            if next_neg is None:
-                # If the running total is positive but we are out of
-                # positive numbers, the total will never be 0, so break
+            if total > 0 and next_neg is None:
                 break
 
-            total    += next_neg
-            next_neg  = get_next( neg_handle, True  )
+            total    += ( next_neg or 0 )
+            next_neg  = get_next( neg_handle, True )
 
         if total <= 0:
-            if next_pos is None:
-                # If the running total is negative but we are out of
-                # negative numbers, the total will never be 0, so break
+            if total < 0 and next_pos is None:
                 break
 
-            total    += next_pos
+            total    += ( next_pos or 0 )
             next_pos  = get_next( pos_handle, False )
 
     pos_handle.close()
     neg_handle.close()
+    
+    return total == 0
 
-    print( 'true' if total == 0 else 'false' )
+def main( argv ):
+    """Script main.
+
+    Keyword arguments:
+    argv -- an array containing this script arguments. Should
+            contain only a filename at index 0.
+    """
+    if len( argv ) != 1:
+        usage()
+
+    filename = argv[0]
+    zero_sum = run( filename )
+    
+    print( str( zero_sum ).lower() )
 
 if __name__ == '__main__':
     main( sys.argv[1:] )
-
-sys.exit( 0 )
+    sys.exit( 0 )
