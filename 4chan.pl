@@ -40,9 +40,9 @@ sub sanitize($)
 
     foreach my $line ( split( /\n/, $sanitized ) )
     {
-        if( $line =~ m/\<a href=".+" class="quotelink"\>/ )
+        if( $line =~ m/\<a href=".+" class=".+"\>/ )
         {
-            $line =~ s/\<a href=".+" class="quotelink"\>(.+)\<\/a\>/$1/;
+            $line =~ s/\<a href=".+" class=".+"\>(.+)\<\/a\>/$1/;
         }
 
         if( $line =~ m/\<span class="quote"\>/ )
