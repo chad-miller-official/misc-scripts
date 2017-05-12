@@ -3,15 +3,15 @@
 use strict;
 use warnings;
 
+use File::Basename;
 use File::Fetch;
 use HTML::Entities;
 use JSON;
 use REST::Client;
-use Term::ProgressBar;
 
 my ( $board, $thread_op, @save_location ) = @ARGV;
 
-die "Usage: $0 <board> <thread> <save location>\n"
+die 'Usage: ' . basename( $0 ) . " <board> <thread> <save location>\n"
     unless $board && $thread_op && @save_location;
 
 $board =~ s/\///g;
@@ -44,17 +44,6 @@ if( length( $thread_name ) > 24 )
 }
 
 my $timer_max = scalar @{$thread->{posts}};
-my $progress  = Term::ProgressBar->new( {
-    name   => $thread_name,
-    count  => $timer_max,
-    remove => 1,
-    ETA    => 'linear',
-} );
-
-$progress->minor( 0 );
-$progress->max_update_rate( 1 );
-
-my $counter = 0;
 
 foreach my $post ( @{$thread->{posts}} )
 {
@@ -72,10 +61,6 @@ foreach my $post ( @{$thread->{posts}} )
        $rename_uri =~ s/^(.+)\/(.+)$/$1\/$realname/;
 
     rename( $uri, $rename_uri );
-
-    $progress->update( $counter++ );
 }
-
-$progress->update( $timer_max );
 
 exit 0;
