@@ -28,10 +28,12 @@ while read url; do
     if [[ "$url" =~ $THREAD_REGEX ]]; then
         board="${BASH_REMATCH[1]}"
         thread_op="${BASH_REMATCH[2]}"
-        output=$(pull-4chan-thread.pl $board $thread_op $OUTPUT_DIR)
+        output=$(pull-4chan-thread $board $thread_op $OUTPUT_DIR)
 
         if [[ -n "$output" ]]; then
             errors+=("$output")
+        else
+            echo "[$(date)] Pulled $url"
         fi
     fi
 done < "$THREAD_LIST"
@@ -49,5 +51,7 @@ done
 if [[ -n "$dead" ]]; then
     printf "$(comm -23 <(sort $THREAD_LIST | uniq) <(printf $dead | sort | uniq))" > "$THREAD_LIST"
 fi
+
+echo "Completed at $(date)"
 
 exit 0
