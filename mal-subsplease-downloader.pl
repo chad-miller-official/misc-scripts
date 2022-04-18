@@ -6,6 +6,7 @@ use warnings;
 use Config::IniFiles;
 use HTML::Parser;
 use JSON;
+use POSIX qw(strftime);
 
 my $API_AUTH_URL           = 'https://myanimelist.net/v1/oauth2/token';
 my $API_BASE_URL           = 'https://api.myanimelist.net/v2';
@@ -15,8 +16,15 @@ my $SUBSPLEASE_BASE_URL    = 'https://subsplease.org';
 
 my $CONFIG = Config::IniFiles->new(-file => $MAL_CONF_LOCATION);
 
+sub log_message($) {
+    my $message   = shift;
+    my $timestamp = strftime('%Y-%m-%dT%H:%M:%SZ', gmtime time);
+    print "[$timestamp] $message\n";
+    return;
+}
+
 sub fetch_subsplease_shows() {
-    print "Downloading show list from SubsPlease...\n";
+    log_message "Downloading show list from SubsPlease...";
 
     my $url_list = {};
 
@@ -28,6 +36,8 @@ sub fetch_subsplease_shows() {
              my $title        = $attr->{title};
             $url_list->{$title} = $href;
         }
+
+        return;
     };
 
     my $anchor_parser = HTML::Parser::->new();
@@ -42,8 +52,8 @@ sub fetch_subsplease_shows() {
 }
 
 sub authenticate_and_get_auth() {
-    print "Authenticating with MyAnimeList...\n";
-    print "Reading refresh token on disk...\n";
+    log_message "Authenticating with MyAnimeList...";
+    log_message "Reading refresh token on disk...";
 
     my $refresh_token_fh;
 
@@ -65,11 +75,8 @@ sub authenticate_and_get_auth() {
     my $access_token         = $refresh_response->{access_token};
        $refresh_token        = $refresh_response->{refresh_token};
 
-    if(!$access_token) {
-        die "ERROR: Authentication failed! Response body: $refresh_response_str\n";
-    }
-
-    print "Updating refresh token on disk...\n";
+    die "ERROR: Authentication failed! Response body: $refresh_response_str\n" unless $access_token;
+    log_message "Updating refresh token on disk...";
 
     open($refresh_token_fh, '>', $REFRESH_TOKEN_LOCATION) or die $!;
     print {$refresh_token_fh} $refresh_token;
@@ -81,7 +88,7 @@ sub authenticate_and_get_auth() {
 sub fetch_watching_list($) {
     my $auth_header = shift;
 
-    print "Fetching anime list...\n";
+    log_message "Fetching anime list...";
 
     my $watching_list_str = `curl -X GET '$API_BASE_URL/users/\@me/animelist?status=watching' -s -H '$auth_header'`;
     my $watching_list     = decode_json $watching_list_str;
@@ -111,14 +118,14 @@ sub fetch_anime_urls($$$) {
            $anime = $anime->{node};
         my $title = $anime->{title};
 
-        print "Fetching data for '$title'...\n";
+        log_message "Fetching data for '$title'...";
 
         my $detail_str       = `curl -X GET '$API_BASE_URL/anime/$anime->{id}?fields=alternative_titles' -s -H "$auth_header"`;
         my $detail           = decode_json $detail_str;
         my $alternate_titles = $detail->{alternative_titles}->{synonyms};
 
         foreach my $title ($title, @$alternate_titles) {
-            my $season_corrected_title = fixup_season_verbiage($title);
+            my $season_corrected_title = fixup_season_verbiage $title ;
 
             if($subsplease_url_list->{$season_corrected_title}) {
                 $anime_urls{$title} = "$SUBSPLEASE_BASE_URL/$subsplease_url_list->{$season_corrected_title}/";
@@ -126,7 +133,7 @@ sub fetch_anime_urls($$$) {
             }
         }
 
-        print "ERROR: No SubsPlease URL found for '$title'!\n";
+        log_message "ERROR: No SubsPlease URL found for '$title'!";
     }
 
     return \%anime_urls;
@@ -135,7 +142,7 @@ sub fetch_anime_urls($$$) {
 sub fetch_anime_sids($) {
     my $anime_urls = shift;
 
-    print "Fetching SubsPlease SIDs...\n";
+    log_message "Fetching SubsPlease SIDs...";
 
     my $sid_list = {};
 
@@ -145,21 +152,18 @@ sub fetch_anime_sids($) {
 
     foreach my $anime_title (keys %$anime_urls) {
         local *table_handler = sub {
-            my $attr = shift;
+            my $attr                     = shift;
+               $sid_list->{$anime_title} = $attr->{sid} if $attr->{id} eq 'show-release-table';
 
-            if($attr->{id} eq 'show-release-table') {
-                $sid_list->{$anime_title} = $attr->{sid};
-            }
+            return;
         };
 
-        my $anime_url = $anime_urls->{$anime_title};
+        my $anime_url            = $anime_urls->{$anime_title};
         my $subsplease_shows_str = `curl -X GET $anime_url -s`;
 
         $table_parser->parse($subsplease_shows_str);
 
-        if(!$sid_list->{$anime_title}) {
-            print "ERROR: No SID found for '$anime_title'!\n";
-        }
+        log_message "ERROR: No SID found for '$anime_title'!" unless $sid_list->{$anime_title};
     }
 
     return $sid_list;
@@ -170,7 +174,7 @@ sub fetch_anime_episode_urls($) {
     my %anime_episodes;
 
     foreach my $anime_title (keys %$sid_list) {
-        print "Fetching episode torrent URLs for '$anime_title'...\n";
+        log_message "Fetching episode torrent URLs for '$anime_title'...";
 
         my $anime_sid               = $sid_list->{$anime_title};
         my $subsplease_response_str = `curl -X GET '$SUBSPLEASE_BASE_URL/api/?f=show&tz=America/New_York&sid=$anime_sid' -s`;
@@ -186,7 +190,7 @@ sub fetch_anime_episode_urls($) {
             my $episode_download  = shift @episode_downloads;
 
             if(!$episode_download) {
-                print "ERROR: No torrent URL found for '$anime_title' episode #$episode_number!\n";
+                log_message "ERROR: No torrent URL found for '$anime_title' episode #$episode_number!";
             } else {
                 my $episode_url                    = $episode_download->{torrent};
                    $episode_map->{$episode_number} = $episode_url;
@@ -202,7 +206,7 @@ sub fetch_anime_episode_urls($) {
 sub download_missing_torrents($) {
     my $anime_episodes = shift;
 
-    print "Reading downloaded files...\n";
+    log_message "Reading downloaded files...";
 
     opendir(my $downloads, glob '~/Downloads');
     my @downloaded_files = readdir $downloads;
@@ -217,31 +221,29 @@ sub download_missing_torrents($) {
         foreach my $episode_number (keys %episode_map) {
             my $episode_url              = $episode_map{$episode_number};
             my $episode_number_with_zero = $episode_number < 10 ? "0$episode_number" : $episode_number;
-            my $season_corrected_title   = fixup_season_verbiage($anime_title);
+            my $season_corrected_title   = fixup_season_verbiage $anime_title;
             my @matching_files           = grep { /$season_corrected_title - $episode_number_with_zero/ } @downloaded_files;
 
             if(!@matching_files) {
-                print "Downloading '$anime_title' episode #$episode_number to Watch directory...\n";
+                log_message "Downloading '$anime_title' episode #$episode_number to Watch directory...";
 
                 $has_new_episode = 1;
                 system "wget $episode_url -O \"\$HOME/Watch/$season_corrected_title - $episode_number.torrent\" --no-check-certificate";
             }
         }
 
-        if(!$has_new_episode) {
-            print "No new episodes of '$anime_title' to download!\n";
-        }
+        log_message "No new episodes of '$anime_title' to download!" unless $has_new_episode;
     }
 }
 
 my $subsplease_url_list = fetch_subsplease_shows();
 my $auth_header         = authenticate_and_get_auth();
-my $watching_list       = fetch_watching_list($auth_header);
+my $watching_list       = fetch_watching_list $auth_header;
 my $anime_urls          = fetch_anime_urls($auth_header, $subsplease_url_list, $watching_list);
-my $sid_list            = fetch_anime_sids($anime_urls);
-my $anime_episodes      = fetch_anime_episode_urls($sid_list);
+my $sid_list            = fetch_anime_sids $anime_urls;
+my $anime_episodes      = fetch_anime_episode_urls $sid_list;
 
 download_missing_torrents($anime_episodes);
 
-print "Done!\n";
+log_message "Done!";
 exit 0;
