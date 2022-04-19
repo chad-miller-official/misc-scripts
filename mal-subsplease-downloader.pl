@@ -78,7 +78,7 @@ sub authenticate_and_get_auth() {
     die "ERROR: Authentication failed! Response body: $refresh_response_str\n" unless $access_token;
     log_message "Updating refresh token on disk...";
 
-    open($refresh_token_fh, '>', $REFRESH_TOKEN_LOCATION) or die $!;
+    open($refresh_token_fh, '>', $REFRESH_TOKEN_LOCATION) or die "ERROR: $!\n";
     print {$refresh_token_fh} $refresh_token;
     close $refresh_token_fh;
 
@@ -146,10 +146,6 @@ sub fetch_anime_sids($) {
 
     my $sid_list = {};
 
-    my $table_parser = HTML::Parser::->new();
-       $table_parser->report_tags(qw(table));
-       $table_parser->handler(start => \&table_handler, 'attr');
-
     foreach my $anime_title (keys %$anime_urls) {
         local *table_handler = sub {
             my $attr                     = shift;
@@ -157,6 +153,10 @@ sub fetch_anime_sids($) {
 
             return;
         };
+
+        my $table_parser = HTML::Parser::->new();
+           $table_parser->report_tags(qw(table));
+           $table_parser->handler(start => \&table_handler, 'attr');
 
         my $anime_url            = $anime_urls->{$anime_title};
         my $subsplease_shows_str = `curl -X GET $anime_url -s`;
