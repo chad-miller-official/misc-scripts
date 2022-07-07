@@ -99,19 +99,24 @@ sub fetch_watching_list($) {
 sub fixup_season_verbiage($) {
     my $title = shift;
 
+    my $bare_title    = $title;
+    my $season_number = 0;
+
     if($title =~ /(([[:digit:]])[a-z]{2} Season$)/) {
         my $season_suffix = $1;
-        my $season_number = $2;
+           $season_number = $2;
 
-        $title =~ s/$season_suffix$//;
-        $title .= "S$season_number";
+        $title        =~ s/$season_suffix$//;
+        ($bare_title  =  $title) =~ s/[[:space:]]+$//;
+        $title       .=  "S$season_number";
     }
 
-    return $title;
+    return ($title, $bare_title, $season_number);
 }
 
 sub fetch_anime_urls($$$) {
-    my ( $auth_header, $subsplease_url_list, $watching_list ) = @_;
+    my ($auth_header, $subsplease_url_list, $watching_list) = @_;
+
     my %anime_urls;
 
     WATCH_LIST: foreach my $anime (@{$watching_list->{data}}) {
@@ -125,10 +130,13 @@ sub fetch_anime_urls($$$) {
         my $alternate_titles = $detail->{alternative_titles}->{synonyms};
 
         foreach my $title ($title, @$alternate_titles) {
-            my $season_corrected_title = fixup_season_verbiage $title ;
+            my ($season_corrected_title, $bare_title, $season_number) = fixup_season_verbiage $title;
 
             if($subsplease_url_list->{$season_corrected_title}) {
                 $anime_urls{$title} = "$SUBSPLEASE_BASE_URL/$subsplease_url_list->{$season_corrected_title}/";
+                next WATCH_LIST;
+            } elsif($subsplease_url_list->{$bare_title}) {
+                $anime_urls{$title} = "$SUBSPLEASE_BASE_URL/$subsplease_url_list->{$bare_title}/";
                 next WATCH_LIST;
             }
         }
@@ -171,6 +179,7 @@ sub fetch_anime_sids($) {
 
 sub fetch_anime_episode_urls($) {
     my $sid_list = shift;
+
     my %anime_episodes;
 
     foreach my $anime_title (keys %$sid_list) {
@@ -185,7 +194,7 @@ sub fetch_anime_episode_urls($) {
 
         foreach my $episode_title (keys %$episodes) {
             my $episode_data      = $episodes->{$episode_title};
-            my $episode_number    = int $episode_data->{episode};
+            my $episode_number    = int($episode_data->{episode});
             my @episode_downloads = grep { int $_->{res} == 720 } @{$episode_data->{downloads}};
             my $episode_download  = shift @episode_downloads;
 
@@ -219,10 +228,10 @@ sub download_missing_torrents($) {
         my $has_new_episode = 0;
 
         foreach my $episode_number (keys %episode_map) {
-            my $episode_url              = $episode_map{$episode_number};
-            my $episode_number_with_zero = $episode_number < 10 ? "0$episode_number" : $episode_number;
-            my $season_corrected_title   = fixup_season_verbiage $anime_title;
-            my @matching_files           = grep { /$season_corrected_title - $episode_number_with_zero/ } @downloaded_files;
+            my $episode_url                                           = $episode_map{$episode_number};
+            my $episode_number_with_zero                              = $episode_number < 10 ? "0$episode_number" : $episode_number;
+            my ($season_corrected_title, $bare_title, $season_number) = fixup_season_verbiage $anime_title;
+            my @matching_files                                        = grep { /(($season_corrected_title)|($bare_title)) - $episode_number_with_zero/ } @downloaded_files;
 
             if(!@matching_files) {
                 log_message "Downloading '$anime_title' episode #$episode_number to Watch directory...";
