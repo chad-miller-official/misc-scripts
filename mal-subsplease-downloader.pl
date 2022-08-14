@@ -90,7 +90,7 @@ sub fetch_watching_list($) {
 
     log_message "Fetching anime list...";
 
-    my $watching_list_str = `curl -X GET '$API_BASE_URL/users/\@me/animelist?status=watching' -s -H '$auth_header'`;
+    my $watching_list_str = `curl -X GET '$API_BASE_URL/users/\@me/animelist?status=watching&nsfw=true' -s -H '$auth_header'`;
     my $watching_list     = decode_json $watching_list_str;
 
     return $watching_list;
