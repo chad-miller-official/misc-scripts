@@ -99,6 +99,10 @@ sub fetch_watching_list($) {
 sub fixup_season_verbiage($) {
     my $title = shift;
 
+    if ($title eq 'Spy x Family Part 2') {
+        $title = 'Spy x Family';
+    }
+
     my $bare_title    = $title;
     my $season_number = 0;
 
