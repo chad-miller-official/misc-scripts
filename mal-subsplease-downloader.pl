@@ -44,7 +44,7 @@ sub fetch_subsplease_shows() {
        $anchor_parser->report_tags(qw(a));
        $anchor_parser->handler(start => \&anchor_handler, 'attr');
 
-    my $subsplease_shows_str = `curl -X GET '$SUBSPLEASE_BASE_URL/shows/' -s`;
+    my $subsplease_shows_str = `curl -k -X GET '$SUBSPLEASE_BASE_URL/shows/' -s`;
 
     $anchor_parser->parse($subsplease_shows_str);
 
@@ -101,6 +101,8 @@ sub fixup_season_verbiage($) {
 
     if ($title eq 'Spy x Family Part 2') {
         $title = 'Spy x Family';
+    } elsif ($title eq 'Kanojo, Okarishimasu 3rd Season') {
+        $title = 'Kanojo, Okarishimasu';
     }
 
     my $bare_title    = $title;
@@ -171,7 +173,7 @@ sub fetch_anime_sids($) {
            $table_parser->handler(start => \&table_handler, 'attr');
 
         my $anime_url            = $anime_urls->{$anime_title};
-        my $subsplease_shows_str = `curl -X GET $anime_url -s`;
+        my $subsplease_shows_str = `curl -k -X GET $anime_url -s`;
 
         $table_parser->parse($subsplease_shows_str);
 
@@ -190,7 +192,7 @@ sub fetch_anime_episode_urls($) {
         log_message "Fetching episode torrent URLs for '$anime_title'...";
 
         my $anime_sid               = $sid_list->{$anime_title};
-        my $subsplease_response_str = `curl -X GET '$SUBSPLEASE_BASE_URL/api/?f=show&tz=America/New_York&sid=$anime_sid' -s`;
+        my $subsplease_response_str = `curl -k -X GET '$SUBSPLEASE_BASE_URL/api/?f=show&tz=America/New_York&sid=$anime_sid' -s`;
         my $subsplease_response     = decode_json $subsplease_response_str;
         my $episodes                = $subsplease_response->{episode};
 
