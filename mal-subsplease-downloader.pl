@@ -16,6 +16,11 @@ my $SUBSPLEASE_BASE_URL    = 'https://subsplease.org';
 
 my $CONFIG = Config::IniFiles->new(-file => $MAL_CONF_LOCATION);
 
+my %TITLE_MAP = (
+    'Spy x Family Part 2'             => 'Spy x Family',
+    'Kanojo, Okarishimasu 3rd Season' => 'Kanojo, Okarishimasu',
+);
+
 sub log_message($) {
     my $message   = shift;
     my $timestamp = strftime('%Y-%m-%dT%H:%M:%SZ', gmtime time);
@@ -98,17 +103,12 @@ sub fetch_watching_list($) {
 
 sub fixup_season_verbiage($) {
     my $title = shift;
-
-    if ($title eq 'Spy x Family Part 2') {
-        $title = 'Spy x Family';
-    } elsif ($title eq 'Kanojo, Okarishimasu 3rd Season') {
-        $title = 'Kanojo, Okarishimasu';
-    }
+       $title = $TITLE_MAP{$title} || $title;
 
     my $bare_title    = $title;
     my $season_number = 0;
 
-    if($title =~ /(([[:digit:]])[a-z]{2} Season$)/) {
+    if($title =~ /(([[:digit:]])[a-z]{2} Season$)/ || $title =~ /(Season ([[:digit:]]))$/) {
         my $season_suffix = $1;
            $season_number = $2;
 
@@ -258,7 +258,7 @@ my $anime_urls          = fetch_anime_urls($auth_header, $subsplease_url_list, $
 my $sid_list            = fetch_anime_sids $anime_urls;
 my $anime_episodes      = fetch_anime_episode_urls $sid_list;
 
-download_missing_torrents($anime_episodes);
+download_missing_torrents $anime_episodes;
 
 log_message "Done!";
 exit 0;
