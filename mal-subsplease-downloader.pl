@@ -17,8 +17,9 @@ my $SUBSPLEASE_BASE_URL    = 'https://subsplease.org';
 my $CONFIG = Config::IniFiles->new(-file => $MAL_CONF_LOCATION);
 
 my %TITLE_MAP = (
-    'Spy x Family Part 2'             => 'Spy x Family',
+    'Spy x Family Part 2' => 'Spy x Family',
     'Kanojo, Okarishimasu 3rd Season' => 'Kanojo, Okarishimasu',
+    'Ookami to Koushinryou: Merchant Meets the Wise Wolf' => 'Spice and Wolf (2024)',
 );
 
 sub log_message($) {
