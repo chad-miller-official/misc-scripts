@@ -20,6 +20,7 @@ my %TITLE_MAP = (
     'Spy x Family Part 2' => 'Spy x Family',
     'Kanojo, Okarishimasu 3rd Season' => 'Kanojo, Okarishimasu',
     'Ookami to Koushinryou: Merchant Meets the Wise Wolf' => 'Spice and Wolf (2024)',
+    'Kono Subarashii Sekai ni Shukufuku wo! 3' => 'Kono Subarashii Sekai ni Shukufuku wo! S3',
 );
 
 sub log_message($) {
